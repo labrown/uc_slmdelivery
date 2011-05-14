@@ -1,0 +1,122 @@
+<?php
+/***
+ * Implementation of Ubercart's hook_shipping_method().
+ */
+
+function uc_slmdelivery_shipping_method() {
+  $methods = array();
+
+  $enabled = variable_get('uc_quote_enabled', array());
+  $weight = variable_get('uc_quote_method_weight', array());
+
+  $methods['slmdelivery'] = array(
+    'id' => 'slmdelivery',
+    'module' => 'uc_slmdelivery',
+    'title' => t('Starrlight Mead custom shipping quotes'),
+    'enabled' => $enabled['slmdelivery'],
+    'quote' => array(
+      'type' => 'order',
+      'callback' => 'uc_slmdelivery_quote',
+      'accessorials' => array( 'slm' => t('SLM Shipping') )
+  ),
+    'weight' => $weight['slmsdelivery'],
+  );
+
+  return $methods;
+}
+
+
+/**
+ * Implementation of hook_ca_predicate()
+ */
+function uc_slmdelivery_ca_predicate() {
+  $enabled = variable_get('uc_quote_enabled', array());
+  $predicates = array();
+
+  $predicates['uc_slmdelivery_get_quote'] = array(
+    '#title' => t('Starrlight Mead shipping quote'),
+    '#trigger' => t('get_quote_from_slmdelivery'),
+    '#class' => 'uc_slmdelivery',
+    '#status' => $enabled['slmdelivery'],
+    '#actions' => array(
+      array(
+      	'#name' => 'uc_quote_action_get_quote',
+      	'#title' => t('Fetch a Starrlight Mead shipping quote.'),
+      	'#argument_map' => array(
+		  'order' => 'order',
+       	  'method' => 'method',
+        ),
+      ),
+    ),
+  );
+  
+  return $predicates;
+}
+
+/***
+ * Standard callback to return a custom Starrlight Mead shipping rate
+ * 
+ * @param $products
+ * 
+ *   The order's products
+ * 
+ * @param $details
+ * 
+ *   Other order details including shipping address
+ *   
+ * @param $method
+ * 
+ *   The shipping method creating the quote
+ *   
+ * @return
+ * 
+ *   An array containing the shipping quote for the order
+ */
+  
+function uc_slmdelivery_quote($products, $details, $method) {
+    
+  $context = array(
+    'revision' => 'altered',
+    'type' => 'amount',
+  );
+
+  $ups_products = array();
+  $mead_products = array();
+  foreach ($products as $product) {
+    // Only send NON-MEAD products to UPS quote
+    if (substr($product->model,0,1) != 'M') {
+      $ups_products[] = $product;
+    }
+    else {
+       $mead_products[] = $product;
+    }
+  }
+
+  $methods = uc_flatrate_shipping_method();
+  
+  $ups_quotes = uc_flatrate_quote($ups_products, $details, $methods['flatrate_3']);
+  
+  foreach($ups_quotes as $k => $q) {
+    $ups_rate = $ups_quotes[$k]['rate'];
+  }
+
+  /* Calculate Mead shipping cost */
+  $mead_rate = count($mead_products) ?  20 : 0;
+  $bottles = 0;
+  foreach ($mead_products as $mead) {
+   $bottles += $mead->qty; 
+  }
+  $mead_rate += ($bottles - 1) * 2.75;
+  
+  $rate = $ups_rate + $mead_rate;
+  
+  $altered = uc_price($rate, $context);
+  $context['revision'] = 'formatted';
+  $formatted = uc_price($rate, $context);
+  $quotes[] = array('rate' => $altered, 
+  					'format' => $formatted, 
+  					'option_label' => t('Shipping'));
+  
+  return $quotes;
+  
+  }
