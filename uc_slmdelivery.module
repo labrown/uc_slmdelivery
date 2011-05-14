@@ -92,21 +92,21 @@ function uc_slmdelivery_quote($products, $details, $method) {
     }
   }
 
-  $methods = uc_flatrate_shipping_method();
+  $methods = uc_ups_shipping_method();
   
-  $ups_quotes = uc_flatrate_quote($ups_products, $details, $methods['flatrate_3']);
+  $ups_quotes = uc_ups_quote($ups_products, $details, $methods['ups']);
   
   foreach($ups_quotes as $k => $q) {
     $ups_rate = $ups_quotes[$k]['rate'];
   }
 
   /* Calculate Mead shipping cost */
-  $mead_rate = count($mead_products) ?  20 : 0;
   $bottles = 0;
   foreach ($mead_products as $mead) {
    $bottles += $mead->qty; 
   }
-  $mead_rate += ($bottles - 1) * 2.75;
+
+  $mead_rate = $bottles ? 20 + ($bottles - 1) * 2.75 : 0;
   
   $rate = $ups_rate + $mead_rate;
   
@@ -120,3 +120,4 @@ function uc_slmdelivery_quote($products, $details, $method) {
   return $quotes;
   
   }
+

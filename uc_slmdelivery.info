@@ -1,6 +1,7 @@
 name = Starrlight Mead Custom Shipping
 description = "Custom shipping module for Starrlight Mead."
 dependencies[] = uc_quote
+dependencies[] = uc_ups
 package = "Ubercart - fulfillment"
 core = 6.x
 version = "6.x-0.1"
